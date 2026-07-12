@@ -26,7 +26,7 @@ export async function ensureDatabase() {
       phone TEXT NOT NULL DEFAULT '', email TEXT NOT NULL DEFAULT '', website TEXT NOT NULL DEFAULT '',
       score INTEGER NOT NULL DEFAULT 0, score_reasons TEXT NOT NULL DEFAULT '[]',
       status TEXT NOT NULL DEFAULT 'new', arl_url TEXT NOT NULL, source TEXT NOT NULL DEFAULT 'denue',
-      is_demo INTEGER NOT NULL DEFAULT 0, imported_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      is_demo INTEGER NOT NULL DEFAULT 0, imported_at TEXT NOT NULL DEFAULT '',
       created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
     )`),
     db.prepare(`CREATE TABLE IF NOT EXISTS import_jobs (

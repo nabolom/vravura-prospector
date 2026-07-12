@@ -23,7 +23,7 @@ ALTER TABLE `prospects` ADD `address` text DEFAULT '' NOT NULL;--> statement-bre
 ALTER TABLE `prospects` ADD `score_reasons` text DEFAULT '[]' NOT NULL;--> statement-breakpoint
 ALTER TABLE `prospects` ADD `source` text DEFAULT 'denue' NOT NULL;--> statement-breakpoint
 ALTER TABLE `prospects` ADD `is_demo` integer DEFAULT false NOT NULL;--> statement-breakpoint
-ALTER TABLE `prospects` ADD `imported_at` text DEFAULT CURRENT_TIMESTAMP NOT NULL;
+ALTER TABLE `prospects` ADD `imported_at` text DEFAULT '' NOT NULL;
 --> statement-breakpoint
 UPDATE `prospects` SET `source` = 'demo', `is_demo` = 1
 WHERE `id` IN (

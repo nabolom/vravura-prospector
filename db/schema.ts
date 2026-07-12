@@ -24,7 +24,7 @@ export const prospects = sqliteTable("prospects", {
   arlUrl: text("arl_url").notNull(),
   source: text("source").notNull().default("denue"),
   isDemo: integer("is_demo", { mode: "boolean" }).notNull().default(false),
-  importedAt: text("imported_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+  importedAt: text("imported_at").notNull().default(""),
   createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
 });
 
