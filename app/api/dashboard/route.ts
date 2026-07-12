@@ -10,8 +10,9 @@ export async function GET() {
         SUM(CASE WHEN status = 'diagnosed' THEN 1 ELSE 0 END) AS diagnosed,
         SUM(CASE WHEN status = 'qualified' THEN 1 ELSE 0 END) AS qualified FROM prospects`).first(),
       db.prepare("SELECT status, COUNT(*) AS total FROM prospects GROUP BY status").all(),
-      db.prepare(`SELECT c.id, c.name, c.created_at, COUNT(cp.prospect_id) AS total
+      db.prepare(`SELECT c.id, c.name, c.created_at, COUNT(p.id) AS total
         FROM campaigns c LEFT JOIN campaign_prospects cp ON c.id = cp.campaign_id
+        LEFT JOIN prospects p ON p.id = cp.prospect_id
         GROUP BY c.id ORDER BY c.created_at DESC`).all(),
     ]);
     return Response.json({ stats, funnel: funnel.results, campaigns: campaigns.results });

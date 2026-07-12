@@ -9,5 +9,8 @@ test("product source replaces the starter preview", async () => {
   assert.match(layout, /VRAVURA Prospector/);
   assert.match(client, /EXPLORADOR/);
   assert.match(client, /OPORTUNIDADES REALES/);
+  assert.match(client, /CAMPAÑAS/);
+  assert.match(client, /SUBE TUS/);
+  assert.match(client, /Sincronizar resultados ARL/);
   assert.doesNotMatch(page + layout + client, /codex-preview|SkeletonPreview/);
 });

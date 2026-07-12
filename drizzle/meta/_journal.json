@@ -15,6 +15,20 @@
       "when": 1783883112275,
       "tag": "0001_sloppy_blonde_phantom",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1783885089514,
+      "tag": "0002_striped_tombstone",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "6",
+      "when": 1783885132579,
+      "tag": "0003_skinny_rogue",
+      "breakpoints": true
     }
   ]
 }

@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { integer, primaryKey, sqliteTable, text } from "drizzle-orm/sqlite-core";
+import { integer, primaryKey, sqliteTable, text, uniqueIndex } from "drizzle-orm/sqlite-core";
 
 export const prospects = sqliteTable("prospects", {
   id: text("id").primaryKey(),
@@ -18,10 +18,16 @@ export const prospects = sqliteTable("prospects", {
   phone: text("phone").notNull().default(""),
   email: text("email").notNull().default(""),
   website: text("website").notNull().default(""),
+  firmographicScore: integer("firmographic_score").notNull().default(0),
+  intentScore: integer("intent_score").notNull().default(0),
   score: integer("score").notNull().default(0),
   scoreReasons: text("score_reasons").notNull().default("[]"),
   status: text("status").notNull().default("new"),
   arlUrl: text("arl_url").notNull(),
+  arlToken: text("arl_token").notNull().default(""),
+  arlLevel: integer("arl_level"),
+  arlLastEvent: text("arl_last_event").notNull().default(""),
+  arlCompletedAt: text("arl_completed_at"),
   source: text("source").notNull().default("denue"),
   isDemo: integer("is_demo", { mode: "boolean" }).notNull().default(false),
   importedAt: text("imported_at").notNull().default(""),
@@ -64,6 +70,9 @@ export const campaignProspects = sqliteTable(
 export const arlEvents = sqliteTable("arl_events", {
   id: integer("id").primaryKey({ autoIncrement: true }),
   prospectId: text("prospect_id").notNull(),
+  eventId: text("event_id").notNull().default(""),
   eventType: text("event_type").notNull(),
+  arlLevel: integer("arl_level"),
+  dimensionScores: text("dimension_scores").notNull().default("{}"),
   occurredAt: text("occurred_at").notNull().default(sql`CURRENT_TIMESTAMP`),
-});
+}, (table) => [uniqueIndex("arl_events_event_id_idx").on(table.eventId).where(sql`${table.eventId} <> ''`)]);

@@ -1,0 +1,1 @@
+CREATE UNIQUE INDEX `arl_events_event_id_idx` ON `arl_events` (`event_id`) WHERE "arl_events"."event_id" <> '';

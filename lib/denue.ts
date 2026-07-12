@@ -1,24 +1,7 @@
 import { env } from "cloudflare:workers";
+import { calculateFirmographicScore } from "./scoring";
 
 const DENUE_BASE = "https://www.inegi.org.mx/app/api/denue/v1/consulta";
-
-const employeePoints: Record<string, number> = {
-  "0 a 5 personas": 3,
-  "6 a 10 personas": 8,
-  "11 a 30 personas": 14,
-  "31 a 50 personas": 19,
-  "51 a 100 personas": 24,
-  "101 a 250 personas": 29,
-  "251 y mas personas": 35,
-  "251 y más personas": 35,
-};
-
-const sectorPoints: Record<string, number> = {
-  "11": 5, "21": 15, "22": 18, "23": 12, "31": 22, "32": 22, "33": 22,
-  "43": 17, "46": 10, "48": 22, "49": 22, "51": 25, "52": 24, "53": 15,
-  "54": 24, "55": 25, "56": 22, "61": 18, "62": 20, "71": 14, "72": 16,
-  "81": 12, "93": 10,
-};
 
 export type NormalizedProspect = {
   id: string; clee: string; name: string; legalName: string; activityCode: string;
@@ -66,21 +49,6 @@ function splitLocation(value: string) {
     municipality: parts.length >= 2 ? parts.at(-2) ?? "" : "",
     locality: parts.length >= 3 ? parts.slice(0, -2).join(", ") : parts[0] ?? "",
   };
-}
-
-function calculateScore(input: Omit<NormalizedProspect, "score" | "scoreReasons" | "arlUrl">) {
-  let score = 5;
-  const reasons = ["Establecimiento activo en DENUE (+5)"];
-  const size = employeePoints[input.employeeBand] ?? 0;
-  if (size) { score += size; reasons.push(`Tamaño ${input.employeeBand} (+${size})`); }
-  const sector = sectorPoints[input.sectorCode] ?? 8;
-  score += sector;
-  reasons.push(`Potencial de automatización del sector ${input.sectorCode || "sin clasificar"} (+${sector})`);
-  if (input.email) { score += 18; reasons.push("Correo empresarial publicado (+18)"); }
-  if (input.phone) { score += 9; reasons.push("Teléfono publicado (+9)"); }
-  if (input.website) { score += 10; reasons.push("Sitio web publicado (+10)"); }
-  if (input.legalName) { score += 3; reasons.push("Razón social identificada (+3)"); }
-  return { score: Math.min(score, 100), reasons: JSON.stringify(reasons) };
 }
 
 export function getDenueToken() {
@@ -133,7 +101,7 @@ export function normalizeDenueRow(row: DenueRow): NormalizedProspect | null {
     email: normalizeEmail(pick(row, "Correo_e", "correo_e")),
     website: normalizeWebsite(pick(row, "Sitio_internet", "sitio_internet", "www")),
   };
-  const scored = calculateScore(input);
+  const scored = calculateFirmographicScore(input, "denue");
   return {
     ...input,
     score: scored.score,
@@ -141,4 +109,3 @@ export function normalizeDenueRow(row: DenueRow): NormalizedProspect | null {
     arlUrl: `https://arl-vravura.bolt.host/?utm_source=denue&utm_medium=prospector&utm_campaign=mx_denue&lead_id=${encodeURIComponent(id)}`,
   };
 }
-

@@ -24,8 +24,11 @@ export async function ensureDatabase() {
       employee_band TEXT NOT NULL, state TEXT NOT NULL, municipality TEXT NOT NULL,
       locality TEXT NOT NULL DEFAULT '', postal_code TEXT NOT NULL DEFAULT '', address TEXT NOT NULL DEFAULT '',
       phone TEXT NOT NULL DEFAULT '', email TEXT NOT NULL DEFAULT '', website TEXT NOT NULL DEFAULT '',
+      firmographic_score INTEGER NOT NULL DEFAULT 0, intent_score INTEGER NOT NULL DEFAULT 0,
       score INTEGER NOT NULL DEFAULT 0, score_reasons TEXT NOT NULL DEFAULT '[]',
-      status TEXT NOT NULL DEFAULT 'new', arl_url TEXT NOT NULL, source TEXT NOT NULL DEFAULT 'denue',
+      status TEXT NOT NULL DEFAULT 'new', arl_url TEXT NOT NULL, arl_token TEXT NOT NULL DEFAULT '',
+      arl_level INTEGER, arl_last_event TEXT NOT NULL DEFAULT '', arl_completed_at TEXT,
+      source TEXT NOT NULL DEFAULT 'denue',
       is_demo INTEGER NOT NULL DEFAULT 0, imported_at TEXT NOT NULL DEFAULT '',
       created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
     )`),
@@ -46,10 +49,12 @@ export async function ensureDatabase() {
     )`),
     db.prepare(`CREATE TABLE IF NOT EXISTS arl_events (
       id INTEGER PRIMARY KEY AUTOINCREMENT, prospect_id TEXT NOT NULL,
-      event_type TEXT NOT NULL, occurred_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+      event_id TEXT NOT NULL DEFAULT '', event_type TEXT NOT NULL, arl_level INTEGER,
+      dimension_scores TEXT NOT NULL DEFAULT '{}', occurred_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
     )`),
     db.prepare("CREATE INDEX IF NOT EXISTS prospects_score_idx ON prospects(score DESC)"),
     db.prepare("CREATE INDEX IF NOT EXISTS prospects_location_idx ON prospects(state, municipality)"),
+    db.prepare("CREATE UNIQUE INDEX IF NOT EXISTS arl_events_event_id_idx ON arl_events(event_id) WHERE event_id <> ''"),
   ]);
 
   const count = await db.prepare("SELECT COUNT(*) AS total FROM prospects").first<{ total: number }>();
@@ -58,9 +63,9 @@ export async function ensureDatabase() {
       const arlUrl = `https://arl-vravura.bolt.host/?utm_source=denue&utm_medium=prospector&utm_campaign=mvp&lead_id=${row[0]}`;
       return db.prepare(`INSERT INTO prospects (
         id, name, legal_name, activity, sector_code, employee_band, state, municipality,
-        phone, email, website, score, status, arl_url, score_reasons, source, is_demo
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, '[]', 'demo', 1)`)
-        .bind(...row, arlUrl);
+        phone, email, website, firmographic_score, score, status, arl_url, score_reasons, source, is_demo
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, '[]', 'demo', 1)`)
+        .bind(...row.slice(0, 12), row[11], row[12], arlUrl);
     });
     await db.batch(inserts);
     await db.prepare("INSERT INTO campaigns (name) VALUES (?)").bind("Prospectos ARL · Julio").run();

@@ -20,20 +20,22 @@ async function upsertProspects(db: D1Database, prospects: NormalizedProspect[]) 
     await db.batch(group.map((prospect) => db.prepare(`INSERT INTO prospects (
       id, clee, name, legal_name, activity_code, activity, sector_code, employee_band,
       state, municipality, locality, postal_code, address, phone, email, website,
-      score, score_reasons, status, arl_url, source, is_demo, imported_at
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'new', ?, 'denue', 0, CURRENT_TIMESTAMP)
+      firmographic_score, intent_score, score, score_reasons, status, arl_url, source, is_demo, imported_at
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?, 'new', ?, 'denue', 0, CURRENT_TIMESTAMP)
     ON CONFLICT(id) DO UPDATE SET
       clee=excluded.clee, name=excluded.name, legal_name=excluded.legal_name,
       activity_code=excluded.activity_code, activity=excluded.activity, sector_code=excluded.sector_code,
       employee_band=excluded.employee_band, state=excluded.state, municipality=excluded.municipality,
       locality=excluded.locality, postal_code=excluded.postal_code, address=excluded.address,
       phone=excluded.phone, email=excluded.email, website=excluded.website,
-      score=excluded.score, score_reasons=excluded.score_reasons, arl_url=excluded.arl_url,
+      firmographic_score=excluded.firmographic_score,
+      score=MIN(100, excluded.firmographic_score + prospects.intent_score),
+      score_reasons=excluded.score_reasons, arl_url=excluded.arl_url,
       source='denue', is_demo=0, imported_at=CURRENT_TIMESTAMP`).bind(
         prospect.id, prospect.clee, prospect.name, prospect.legalName, prospect.activityCode,
         prospect.activity, prospect.sectorCode, prospect.employeeBand, prospect.state,
         prospect.municipality, prospect.locality, prospect.postalCode, prospect.address,
-        prospect.phone, prospect.email, prospect.website, prospect.score, prospect.scoreReasons,
+        prospect.phone, prospect.email, prospect.website, prospect.score, prospect.score, prospect.scoreReasons,
         prospect.arlUrl,
       )));
   }
@@ -90,4 +92,3 @@ export async function POST(_request: Request, context: { params: Promise<{ id: s
     return Response.json({ error: message, job: updated }, { status: message.includes("DENUE_TOKEN") ? 503 : 502 });
   }
 }
-
