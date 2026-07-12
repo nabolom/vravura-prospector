@@ -5,7 +5,13 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 type Prospect = {
   id: string; name: string; legal_name: string; activity: string; sector_code: string;
   employee_band: string; state: string; municipality: string; phone: string; email: string;
-  website: string; score: number; status: string; arl_url: string;
+  website: string; score: number; score_reasons?: string; status: string; arl_url: string;
+  source?: string; is_demo?: number;
+};
+
+type ImportJob = {
+  id: string; status: string; imported_count: number; processed_count: number;
+  max_records: number; last_error: string;
 };
 
 type Dashboard = {
@@ -22,6 +28,18 @@ const sectorNames: Record<string, string> = {
   "43": "Mayoreo", "46": "Retail", "48": "Logística", "54": "Profesionales",
   "61": "Educación", "62": "Salud", "72": "Hospitalidad", "81": "Otros servicios",
 };
+
+const mexicoStates = [
+  ["01", "Aguascalientes"], ["02", "Baja California"], ["03", "Baja California Sur"],
+  ["04", "Campeche"], ["05", "Coahuila"], ["06", "Colima"], ["07", "Chiapas"],
+  ["08", "Chihuahua"], ["09", "Ciudad de México"], ["10", "Durango"], ["11", "Guanajuato"],
+  ["12", "Guerrero"], ["13", "Hidalgo"], ["14", "Jalisco"], ["15", "Estado de México"],
+  ["16", "Michoacán"], ["17", "Morelos"], ["18", "Nayarit"], ["19", "Nuevo León"],
+  ["20", "Oaxaca"], ["21", "Puebla"], ["22", "Querétaro"], ["23", "Quintana Roo"],
+  ["24", "San Luis Potosí"], ["25", "Sinaloa"], ["26", "Sonora"], ["27", "Tabasco"],
+  ["28", "Tamaulipas"], ["29", "Tlaxcala"], ["30", "Veracruz"], ["31", "Yucatán"],
+  ["32", "Zacatecas"],
+] as const;
 
 function initials(name: string) {
   return name.split(" ").slice(0, 2).map((word) => word[0]).join("");
@@ -43,6 +61,13 @@ export default function ProspectorApp() {
   const [notice, setNotice] = useState("");
   const [showImport, setShowImport] = useState(false);
   const [mobileNav, setMobileNav] = useState(false);
+  const [importState, setImportState] = useState("09");
+  const [importSector, setImportSector] = useState("0");
+  const [importStratum, setImportStratum] = useState("0");
+  const [importLimit, setImportLimit] = useState(1000);
+  const [importJob, setImportJob] = useState<ImportJob | null>(null);
+  const [importing, setImporting] = useState(false);
+  const [importError, setImportError] = useState("");
 
   const loadDashboard = useCallback(async () => {
     const response = await fetch("/api/dashboard");
@@ -94,6 +119,42 @@ export default function ProspectorApp() {
       setSelected(updated);
       setProspects((items) => items.map((item) => item.id === prospect.id ? updated : item));
       void loadDashboard();
+    }
+  }
+
+  async function startImport() {
+    setImporting(true);
+    setImportError("");
+    setImportJob(null);
+    try {
+      const createdResponse = await fetch("/api/admin/imports", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          stateCodes: [importState], sector: importSector, stratum: importStratum,
+          pageSize: 100, maxRecords: importLimit,
+        }),
+      });
+      const created = await createdResponse.json();
+      if (!createdResponse.ok) throw new Error(created.error || "No fue posible crear la importación");
+      let job = created.job as ImportJob;
+      setImportJob(job);
+      for (let batch = 0; batch < 500 && job.status !== "completed"; batch += 1) {
+        const runResponse = await fetch(`/api/admin/imports/${job.id}/run`, { method: "POST" });
+        const result = await runResponse.json();
+        job = result.job as ImportJob;
+        setImportJob(job);
+        if (!runResponse.ok) throw new Error(result.error || "DENUE no pudo procesar el lote");
+      }
+      if (job.status === "completed") {
+        setNotice(`${job.imported_count} establecimientos reales importados`);
+        await Promise.all([loadProspects(), loadDashboard()]);
+        window.setTimeout(() => setNotice(""), 3200);
+      }
+    } catch (error) {
+      setImportError(error instanceof Error ? error.message : "Error de importación");
+    } finally {
+      setImporting(false);
     }
   }
 
@@ -158,7 +219,7 @@ export default function ProspectorApp() {
               <tbody>
                 {loading ? <tr><td colSpan={8}><div className="loading-row">Trazando oportunidades…</div></td></tr> : prospects.map((prospect, index) => (
                   <tr key={prospect.id} onClick={() => setSelected(prospect)}>
-                    <td><div className="company-cell"><div className="company-logo">{initials(prospect.name)}</div><div><strong>{prospect.name}</strong><span>{prospect.legal_name || "Establecimiento independiente"}</span></div></div></td>
+                    <td><div className="company-cell"><div className="company-logo">{initials(prospect.name)}</div><div><strong>{prospect.name} {prospect.is_demo ? <i className="demo-badge">DEMO</i> : null}</strong><span>{prospect.legal_name || "Establecimiento independiente"}</span></div></div></td>
                     <td><span className="sector-pill">{sectorNames[prospect.sector_code] ?? prospect.activity}</span></td>
                     <td>{prospect.employee_band.replace(" personas", "")}</td>
                     <td><strong className="location">{prospect.state}</strong><span className="subline">{prospect.municipality}</span></td>
@@ -189,15 +250,23 @@ export default function ProspectorApp() {
         <button className="drawer-close" onClick={() => setSelected(null)} aria-label="Cerrar">CERRAR ×</button>
         <div className="section-marker">04</div>
         <div className="drawer-top"><div className="company-logo large">{initials(selected.name)}</div><span className={`status status-${selected.status}`}>{statusLabel[selected.status]}</span><h2>{selected.name}</h2><p>{selected.legal_name}</p></div>
-        <div className="drawer-score"><div><span>Potencial VRAVURA</span><strong>{selected.score}<small>/100</small></strong></div><div className="score-bar"><i style={{ width: `${selected.score}%` }} /></div><p>Alta afinidad por tamaño, actividad y canales empresariales publicados.</p></div>
+        <div className="drawer-score"><div><span>Potencial VRAVURA {selected.is_demo ? "· DEMO" : "· DENUE"}</span><strong>{selected.score}<small>/100</small></strong></div><div className="score-bar"><i style={{ width: `${selected.score}%` }} /></div><p>Score calculado por tamaño, sector, razón social y canales empresariales publicados.</p></div>
         <dl><div><dt>Actividad</dt><dd>{selected.activity}</dd></div><div><dt>Tamaño</dt><dd>{selected.employee_band}</dd></div><div><dt>Ubicación</dt><dd>{selected.municipality}, {selected.state}</dd></div><div><dt>Correo</dt><dd>{selected.email || "No publicado"}</dd></div><div><dt>Teléfono</dt><dd>{selected.phone || "No publicado"}</dd></div></dl>
         <div className="drawer-actions"><button className="primary-button full" onClick={() => void addToCampaign(selected)}>Agregar a campaña</button><a className="outline-button arl-button" href={selected.arl_url} target="_blank" rel="noreferrer">Abrir enlace ARL ↗</a></div>
         <label className="status-select">Etapa comercial<select value={selected.status} onChange={(event) => void updateStatus(selected, event.target.value)}><option value="new">Nuevo</option><option value="contacted">Contactado</option><option value="diagnosed">ARL completo</option><option value="qualified">Oportunidad</option></select></label>
       </aside></div>}
 
       {showImport && <div className="modal-backdrop" onClick={() => setShowImport(false)}><div className="import-modal" onClick={(event) => event.stopPropagation()}>
-        <button className="drawer-close" onClick={() => setShowImport(false)}>CERRAR ×</button><div className="section-marker">05</div><span className="section-kicker">FUENTE NACIONAL</span><h2>CONECTA<br />EL UNIVERSO DENUE.</h2><p>El producto está listo para recibir la edición 05/2026 mediante archivos masivos o la API oficial de INEGI.</p>
-        <div className="import-option"><span>01</span><div><strong>DESCARGA MASIVA</strong><p>Recomendada para cargar los 6.1 millones de establecimientos.</p></div></div><div className="import-option"><span>02</span><div><strong>API DENUE</strong><p>Ideal para actualizaciones por estado, sector o tamaño. Requiere token.</p></div></div><div className="modal-note">SIGUIENTE REQUISITO — Token DENUE o archivos ZIP oficiales.</div><button className="primary-button full" onClick={() => setShowImport(false)}>Entendido</button>
+        <button className="drawer-close" onClick={() => setShowImport(false)}>CERRAR ×</button><div className="section-marker">05</div><span className="section-kicker">CONECTOR SERVER-SIDE</span><h2>IMPORTA<br />DESDE DENUE.</h2><p>Consulta la API oficial por entidad, sector y tamaño. Los registros se normalizan, deduplican y califican automáticamente.</p>
+        <div className="import-form">
+          <label>Entidad<select value={importState} onChange={(event) => setImportState(event.target.value)} disabled={importing}>{mexicoStates.map(([code, name]) => <option key={code} value={code}>{code} · {name}</option>)}</select></label>
+          <label>Sector SCIAN<input value={importSector} onChange={(event) => setImportSector(event.target.value.replace(/\D/g, "").slice(0, 6) || "0")} disabled={importing} aria-label="Sector SCIAN" /></label>
+          <label>Estrato<select value={importStratum} onChange={(event) => setImportStratum(event.target.value)} disabled={importing}><option value="0">Todos los tamaños</option><option value="1">0–5 personas</option><option value="2">6–10 personas</option><option value="3">11–30 personas</option><option value="4">31–50 personas</option><option value="5">51–100 personas</option><option value="6">101–250 personas</option><option value="7">251+ personas</option></select></label>
+          <label>Límite<select value={importLimit} onChange={(event) => setImportLimit(Number(event.target.value))} disabled={importing}><option value="500">500 registros</option><option value="1000">1,000 registros</option><option value="5000">5,000 registros</option><option value="10000">10,000 registros</option></select></label>
+        </div>
+        {importJob && <div className="import-progress"><div><span>{importJob.status === "completed" ? "COMPLETADO" : importJob.status === "error" ? "REQUIERE ATENCIÓN" : "IMPORTANDO"}</span><strong>{importJob.imported_count.toLocaleString("es-MX")} / {importJob.max_records.toLocaleString("es-MX")}</strong></div><div className="progress-track"><i style={{ width: `${Math.min(100, (importJob.processed_count / importJob.max_records) * 100)}%` }} /></div></div>}
+        {importError && <div className="import-error">{importError}</div>}
+        <div className="modal-note">El token nunca se expone al navegador. Los dummies se eliminan con el primer lote real.</div><button className="primary-button full" onClick={() => void startImport()} disabled={importing}>{importing ? "Importando…" : "Iniciar importación"}</button>
       </div></div>}
       {notice && <div className="toast"><span>OK</span>{notice}</div>}
     </div>

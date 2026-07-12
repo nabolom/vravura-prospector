@@ -19,11 +19,23 @@ export async function ensureDatabase() {
   const db = getD1();
   await db.batch([
     db.prepare(`CREATE TABLE IF NOT EXISTS prospects (
-      id TEXT PRIMARY KEY, name TEXT NOT NULL, legal_name TEXT NOT NULL DEFAULT '',
-      activity TEXT NOT NULL, sector_code TEXT NOT NULL, employee_band TEXT NOT NULL,
-      state TEXT NOT NULL, municipality TEXT NOT NULL, phone TEXT NOT NULL DEFAULT '',
-      email TEXT NOT NULL DEFAULT '', website TEXT NOT NULL DEFAULT '', score INTEGER NOT NULL DEFAULT 0,
-      status TEXT NOT NULL DEFAULT 'new', arl_url TEXT NOT NULL, created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+      id TEXT PRIMARY KEY, clee TEXT NOT NULL DEFAULT '', name TEXT NOT NULL, legal_name TEXT NOT NULL DEFAULT '',
+      activity_code TEXT NOT NULL DEFAULT '', activity TEXT NOT NULL, sector_code TEXT NOT NULL,
+      employee_band TEXT NOT NULL, state TEXT NOT NULL, municipality TEXT NOT NULL,
+      locality TEXT NOT NULL DEFAULT '', postal_code TEXT NOT NULL DEFAULT '', address TEXT NOT NULL DEFAULT '',
+      phone TEXT NOT NULL DEFAULT '', email TEXT NOT NULL DEFAULT '', website TEXT NOT NULL DEFAULT '',
+      score INTEGER NOT NULL DEFAULT 0, score_reasons TEXT NOT NULL DEFAULT '[]',
+      status TEXT NOT NULL DEFAULT 'new', arl_url TEXT NOT NULL, source TEXT NOT NULL DEFAULT 'denue',
+      is_demo INTEGER NOT NULL DEFAULT 0, imported_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )`),
+    db.prepare(`CREATE TABLE IF NOT EXISTS import_jobs (
+      id TEXT PRIMARY KEY, state_codes TEXT NOT NULL, current_state_index INTEGER NOT NULL DEFAULT 0,
+      sector TEXT NOT NULL DEFAULT '0', stratum TEXT NOT NULL DEFAULT '0', page_size INTEGER NOT NULL DEFAULT 100,
+      max_records INTEGER NOT NULL DEFAULT 5000, next_record INTEGER NOT NULL DEFAULT 1,
+      processed_count INTEGER NOT NULL DEFAULT 0, imported_count INTEGER NOT NULL DEFAULT 0,
+      status TEXT NOT NULL DEFAULT 'queued', last_error TEXT NOT NULL DEFAULT '',
+      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP, updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
     )`),
     db.prepare(`CREATE TABLE IF NOT EXISTS campaigns (
       id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL, created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
@@ -46,8 +58,8 @@ export async function ensureDatabase() {
       const arlUrl = `https://arl-vravura.bolt.host/?utm_source=denue&utm_medium=prospector&utm_campaign=mvp&lead_id=${row[0]}`;
       return db.prepare(`INSERT INTO prospects (
         id, name, legal_name, activity, sector_code, employee_band, state, municipality,
-        phone, email, website, score, status, arl_url
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
+        phone, email, website, score, status, arl_url, score_reasons, source, is_demo
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, '[]', 'demo', 1)`)
         .bind(...row, arlUrl);
     });
     await db.batch(inserts);

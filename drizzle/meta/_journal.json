@@ -8,6 +8,13 @@
       "when": 1783880496009,
       "tag": "0000_clever_killmonger",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1783883112275,
+      "tag": "0001_sloppy_blonde_phantom",
+      "breakpoints": true
     }
   ]
 }
