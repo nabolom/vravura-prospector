@@ -7,6 +7,7 @@ test("product source replaces the starter preview", async () => {
   const client = await import("node:fs/promises").then(({ readFile }) => readFile(new URL("../app/prospector-app.tsx", import.meta.url), "utf8"));
   assert.match(page, /ProspectorApp/);
   assert.match(layout, /VRAVURA Prospector/);
-  assert.match(client, /Explorador de prospectos/);
+  assert.match(client, /EXPLORADOR/);
+  assert.match(client, /OPORTUNIDADES REALES/);
   assert.doesNotMatch(page + layout + client, /codex-preview|SkeletonPreview/);
 });
