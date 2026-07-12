@@ -41,6 +41,22 @@ const mexicoStates = [
   ["32", "Zacatecas"],
 ] as const;
 
+const scianSectors = [
+  ["0", "Todos los sectores"],
+  ["11", "Agricultura, pesca y actividades relacionadas"],
+  ["21", "Minería"], ["22", "Energía, agua y gas"], ["23", "Construcción"],
+  ["31", "Industrias manufactureras · grupo 31"], ["32", "Industrias manufactureras · grupo 32"],
+  ["33", "Industrias manufactureras · grupo 33"], ["43", "Comercio al por mayor"],
+  ["46", "Comercio al por menor"], ["48", "Transportes, correos y almacenamiento · grupo 48"],
+  ["49", "Transportes, correos y almacenamiento · grupo 49"], ["51", "Información en medios masivos"],
+  ["52", "Servicios financieros y de seguros"], ["53", "Servicios inmobiliarios y alquiler"],
+  ["54", "Servicios profesionales, científicos y técnicos"], ["55", "Corporativos"],
+  ["56", "Apoyo a negocios, residuos y remediación"], ["61", "Servicios educativos"],
+  ["62", "Salud y asistencia social"], ["71", "Cultura, deporte y recreación"],
+  ["72", "Hoteles, restaurantes y alimentos"], ["81", "Otros servicios"],
+  ["93", "Gobierno y organismos internacionales"],
+] as const;
+
 function initials(name: string) {
   return name.split(" ").slice(0, 2).map((word) => word[0]).join("");
 }
@@ -260,7 +276,7 @@ export default function ProspectorApp() {
         <button className="drawer-close" onClick={() => setShowImport(false)}>CERRAR ×</button><div className="section-marker">05</div><span className="section-kicker">CONECTOR SERVER-SIDE</span><h2>IMPORTA<br />DESDE DENUE.</h2><p>Consulta la API oficial por entidad, sector y tamaño. Los registros se normalizan, deduplican y califican automáticamente.</p>
         <div className="import-form">
           <label>Entidad<select value={importState} onChange={(event) => setImportState(event.target.value)} disabled={importing}>{mexicoStates.map(([code, name]) => <option key={code} value={code}>{code} · {name}</option>)}</select></label>
-          <label>Sector SCIAN<input value={importSector} onChange={(event) => setImportSector(event.target.value.replace(/\D/g, "").slice(0, 6) || "0")} disabled={importing} aria-label="Sector SCIAN" /></label>
+          <label>Sector SCIAN<select value={importSector} onChange={(event) => setImportSector(event.target.value)} disabled={importing}>{scianSectors.map(([code, name]) => <option key={code} value={code}>{code} · {name}</option>)}</select></label>
           <label>Estrato<select value={importStratum} onChange={(event) => setImportStratum(event.target.value)} disabled={importing}><option value="0">Todos los tamaños</option><option value="1">0–5 personas</option><option value="2">6–10 personas</option><option value="3">11–30 personas</option><option value="4">31–50 personas</option><option value="5">51–100 personas</option><option value="6">101–250 personas</option><option value="7">251+ personas</option></select></label>
           <label>Límite<select value={importLimit} onChange={(event) => setImportLimit(Number(event.target.value))} disabled={importing}><option value="500">500 registros</option><option value="1000">1,000 registros</option><option value="5000">5,000 registros</option><option value="10000">10,000 registros</option></select></label>
         </div>

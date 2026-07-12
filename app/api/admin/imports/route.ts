@@ -24,7 +24,7 @@ export async function POST(request: Request) {
     if (!stateCodes.length || stateCodes.some((code) => !statePattern.test(code))) {
       return Response.json({ error: "Selecciona claves estatales válidas" }, { status: 400 });
     }
-    const sector = /^\d{1,6}$/.test(payload.sector ?? "0") ? payload.sector ?? "0" : "0";
+    const sector = /^(?:0|\d{2})$/.test(payload.sector ?? "0") ? payload.sector ?? "0" : "0";
     const stratum = /^[0-7]$/.test(payload.stratum ?? "0") ? payload.stratum ?? "0" : "0";
     const pageSize = Math.max(25, Math.min(200, Number(payload.pageSize ?? 100)));
     const maxRecords = Math.max(pageSize, Math.min(50000, Number(payload.maxRecords ?? 5000)));
@@ -38,4 +38,3 @@ export async function POST(request: Request) {
     return Response.json({ error: error instanceof Error ? error.message : "No fue posible crear la importación" }, { status: 500 });
   }
 }
-
