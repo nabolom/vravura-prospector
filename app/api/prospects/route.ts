@@ -11,6 +11,8 @@ export async function GET(request: Request) {
     const sector = (url.searchParams.get("sector") ?? "").trim();
     const size = (url.searchParams.get("size") ?? "").trim();
     const minScore = Math.max(0, Math.min(100, Number(url.searchParams.get("minScore") ?? 0)));
+    const limit = Math.max(1, Math.min(100, Number(url.searchParams.get("limit") ?? 100)));
+    const offset = Math.max(0, Math.min(1000000, Number(url.searchParams.get("offset") ?? 0)));
     const clauses = ["score >= ?"];
     const values: Array<string | number> = [minScore];
 
@@ -31,14 +33,18 @@ export async function GET(request: Request) {
       values.push(size);
     }
 
-    const query = `SELECT * FROM prospects WHERE ${clauses.join(" AND ")} ORDER BY score DESC, name LIMIT 100`;
-    const result = await db.prepare(query).bind(...values).all();
+    const where = clauses.join(" AND ");
+    const query = `SELECT * FROM prospects WHERE ${where} ORDER BY score DESC, name LIMIT ? OFFSET ?`;
+    const [result, count] = await Promise.all([
+      db.prepare(query).bind(...values, limit, offset).all(),
+      db.prepare(`SELECT COUNT(*) AS total FROM prospects WHERE ${where}`).bind(...values).first<{ total: number }>(),
+    ]);
     const facets = await Promise.all([
       db.prepare("SELECT DISTINCT state FROM prospects ORDER BY state").all(),
       db.prepare("SELECT sector_code, activity, COUNT(*) AS total FROM prospects GROUP BY sector_code ORDER BY total DESC").all(),
       db.prepare("SELECT DISTINCT employee_band FROM prospects ORDER BY employee_band").all(),
     ]);
-    return Response.json({ prospects: result.results, states: facets[0].results, sectors: facets[1].results, sizes: facets[2].results });
+    return Response.json({ prospects: result.results, total: count?.total ?? 0, limit, offset, states: facets[0].results, sectors: facets[1].results, sizes: facets[2].results });
   } catch (error) {
     return Response.json({ error: error instanceof Error ? error.message : "No fue posible cargar prospectos" }, { status: 500 });
   }

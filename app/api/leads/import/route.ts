@@ -53,10 +53,10 @@ export async function POST(request: Request) {
         phone: phone(raw.phone), email: email(raw.email), website: website(raw.website),
       };
       const existing = normalized.email
-        ? await db.prepare("SELECT id, intent_score FROM prospects WHERE LOWER(email) = ? LIMIT 1").bind(normalized.email).first<{ id: string; intent_score: number }>()
+        ? await db.prepare("SELECT id, intent_score, source FROM prospects WHERE LOWER(email) = ? LIMIT 1").bind(normalized.email).first<{ id: string; intent_score: number; source: string }>()
         : normalized.phone
-          ? await db.prepare("SELECT id, intent_score FROM prospects WHERE phone = ? LIMIT 1").bind(normalized.phone).first<{ id: string; intent_score: number }>()
-          : await db.prepare("SELECT id, intent_score FROM prospects WHERE LOWER(name) = LOWER(?) AND state = ? LIMIT 1").bind(name, normalized.state).first<{ id: string; intent_score: number }>();
+          ? await db.prepare("SELECT id, intent_score, source FROM prospects WHERE phone = ? LIMIT 1").bind(normalized.phone).first<{ id: string; intent_score: number; source: string }>()
+          : await db.prepare("SELECT id, intent_score, source FROM prospects WHERE LOWER(name) = LOWER(?) AND state = ? LIMIT 1").bind(name, normalized.state).first<{ id: string; intent_score: number; source: string }>();
       const id = existing?.id ?? `uploaded-${crypto.randomUUID()}`;
       const scored = calculateFirmographicScore(normalized, "uploaded");
       const arlUrl = `https://arl-vravura.bolt.host/?utm_source=vravura&utm_medium=prospector&utm_campaign=uploaded&lead_id=${encodeURIComponent(id)}`;
@@ -71,7 +71,7 @@ export async function POST(request: Request) {
         municipality=excluded.municipality, phone=excluded.phone, email=excluded.email,
         website=excluded.website, firmographic_score=excluded.firmographic_score,
         score=MIN(100, excluded.firmographic_score + prospects.intent_score),
-        score_reasons=excluded.score_reasons, source='uploaded', imported_at=CURRENT_TIMESTAMP`).bind(
+        score_reasons=excluded.score_reasons, imported_at=CURRENT_TIMESTAMP`).bind(
         id, name, normalized.legalName, normalized.activity, normalized.sectorCode,
         normalized.employeeBand, normalized.state, normalized.municipality, normalized.phone,
         normalized.email, normalized.website, scored.score,

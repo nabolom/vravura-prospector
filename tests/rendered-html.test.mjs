@@ -14,3 +14,15 @@ test("product source replaces the starter preview", async () => {
   assert.match(client, /Sincronizar resultados ARL/);
   assert.doesNotMatch(page + layout + client, /codex-preview|SkeletonPreview/);
 });
+
+test("prospect controls include regression fixes", async () => {
+  const { readFile } = await import("node:fs/promises");
+  const client = await readFile(new URL("../app/prospector-app.tsx", import.meta.url), "utf8");
+  const prospectsApi = await readFile(new URL("../app/api/prospects/route.ts", import.meta.url), "utf8");
+  const leadsApi = await readFile(new URL("../app/api/leads/import/route.ts", import.meta.url), "utf8");
+  assert.match(client, /Limpiar filtros/);
+  assert.match(client, /firstLine\.match\(\/;\/g\)/);
+  assert.match(prospectsApi, /COUNT\(\*\) AS total/);
+  assert.match(prospectsApi, /LIMIT \? OFFSET \?/);
+  assert.doesNotMatch(leadsApi, /score_reasons=excluded\.score_reasons, source='uploaded'/);
+});

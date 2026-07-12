@@ -22,7 +22,7 @@ export async function POST(_request: Request, context: { params: Promise<{ id: s
     url.searchParams.set("utm_medium", "prospector");
     url.searchParams.set("utm_campaign", "arl_activation");
     url.searchParams.set("lead_id", id);
-    return Response.json({ url: url.toString() });
+    return Response.json({ url: url.toString(), intentScore: intent, score: Math.min(100, prospect.firmographic_score + intent) });
   } catch (error) {
     return Response.json({ error: error instanceof Error ? error.message : "No fue posible crear el enlace ARL" }, { status: 500 });
   }

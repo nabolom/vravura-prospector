@@ -25,6 +25,20 @@ type LeadRow = {
   name: string; legalName: string; activity: string; sectorCode: string; employeeBand: string;
   state: string; municipality: string; phone: string; email: string; website: string;
 };
+type CampaignsPayload = { campaigns?: Campaign[]; members?: Prospect[] };
+type ProspectsPayload = {
+  prospects?: Prospect[]; total?: number; states?: Array<{ state: string }>;
+  sectors?: Array<{ sector_code: string }>; sizes?: Array<{ employee_band: string }>;
+};
+type ApiResult = {
+  added?: boolean; error?: string; campaign?: Campaign; imported?: number; updated?: number;
+  url?: string; intentScore?: number; score?: number; matched?: number; unmatched?: number;
+  job?: ImportJob;
+};
+
+async function responseJson<T>(response: Response) {
+  return response.json() as Promise<T>;
+}
 
 const statusLabel: Record<string, string> = {
   new: "Nuevo", contacted: "Contactado", diagnosed: "ARL completo", qualified: "Oportunidad",
@@ -69,13 +83,16 @@ function initials(name: string) {
 }
 
 function parseCsv(text: string): LeadRow[] {
+  text = text.replace(/^\uFEFF/, "");
+  const firstLine = text.split(/\r?\n/, 1)[0] ?? "";
+  const delimiter = (firstLine.match(/;/g)?.length ?? 0) > (firstLine.match(/,/g)?.length ?? 0) ? ";" : ",";
   const rows: string[][] = [];
   let row: string[] = [], cell = "", quoted = false;
   for (let index = 0; index < text.length; index += 1) {
     const character = text[index];
     if (character === '"' && quoted && text[index + 1] === '"') { cell += '"'; index += 1; }
     else if (character === '"') quoted = !quoted;
-    else if (character === "," && !quoted) { row.push(cell.trim()); cell = ""; }
+    else if (character === delimiter && !quoted) { row.push(cell.trim()); cell = ""; }
     else if ((character === "\n" || character === "\r") && !quoted) {
       if (character === "\r" && text[index + 1] === "\n") index += 1;
       row.push(cell.trim()); if (row.some(Boolean)) rows.push(row); row = []; cell = "";
@@ -101,6 +118,7 @@ function parseCsv(text: string): LeadRow[] {
 
 export default function ProspectorApp() {
   const [prospects, setProspects] = useState<Prospect[]>([]);
+  const [totalProspects, setTotalProspects] = useState(0);
   const [dashboard, setDashboard] = useState<Dashboard>({});
   const [states, setStates] = useState<string[]>([]);
   const [sectors, setSectors] = useState<string[]>([]);
@@ -136,34 +154,38 @@ export default function ProspectorApp() {
 
   const loadDashboard = useCallback(async () => {
     const response = await fetch("/api/dashboard");
-    if (response.ok) setDashboard(await response.json());
+    if (response.ok) setDashboard(await responseJson<Dashboard>(response));
   }, []);
 
   const loadCampaigns = useCallback(async (requestedId?: number) => {
     const listResponse = await fetch("/api/campaigns");
     if (!listResponse.ok) return;
-    const listData = await listResponse.json();
+    const listData = await responseJson<CampaignsPayload>(listResponse);
     const nextCampaigns = (listData.campaigns ?? []) as Campaign[];
     setCampaigns(nextCampaigns);
     const id = requestedId ?? (activeCampaignId || nextCampaigns[0]?.id || 0);
     if (!id) { setCampaignMembers([]); return; }
     setActiveCampaignId(id);
     const membersResponse = await fetch(`/api/campaigns?campaignId=${id}`);
-    if (membersResponse.ok) setCampaignMembers((await membersResponse.json()).members ?? []);
+    if (membersResponse.ok) setCampaignMembers((await responseJson<CampaignsPayload>(membersResponse)).members ?? []);
   }, [activeCampaignId]);
 
-  const loadProspects = useCallback(async () => {
-    setLoading(true);
+  const loadProspects = useCallback(async (offset = 0, append = false) => {
+    if (!append) setLoading(true);
     const params = new URLSearchParams();
     if (search) params.set("search", search);
     if (state) params.set("state", state);
     if (sector) params.set("sector", sector);
     if (size) params.set("size", size);
     if (minScore) params.set("minScore", String(minScore));
+    params.set("limit", "100");
+    params.set("offset", String(offset));
     const response = await fetch(`/api/prospects?${params}`);
     if (response.ok) {
-      const data = await response.json();
-      setProspects(data.prospects ?? []);
+      const data = await responseJson<ProspectsPayload>(response);
+      const next = (data.prospects ?? []) as Prospect[];
+      setProspects((items) => append ? [...items, ...next.filter((candidate) => !items.some((item) => item.id === candidate.id))] : next);
+      setTotalProspects(Number(data.total ?? next.length));
       setStates((data.states ?? []).map((item: { state: string }) => item.state));
       setSectors((data.sectors ?? []).map((item: { sector_code: string }) => item.sector_code));
       setSizes((data.sizes ?? []).map((item: { employee_band: string }) => item.employee_band));
@@ -171,15 +193,21 @@ export default function ProspectorApp() {
     setLoading(false);
   }, [search, state, sector, size, minScore]);
 
-  useEffect(() => { void loadDashboard(); }, [loadDashboard]);
-  useEffect(() => { void loadCampaigns(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    const timer = window.setTimeout(() => void loadDashboard(), 0);
+    return () => window.clearTimeout(timer);
+  }, [loadDashboard]);
+  useEffect(() => {
+    const timer = window.setTimeout(() => void loadCampaigns(), 0);
+    return () => window.clearTimeout(timer);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => {
     const timer = window.setTimeout(() => void loadProspects(), 180);
     return () => window.clearTimeout(timer);
   }, [loadProspects]);
 
   const clearFilters = () => { setSearch(""); setState(""); setSector(""); setSize(""); setMinScore(0); };
-  const activeFilters = [state, sector, size, minScore ? String(minScore) : ""].filter(Boolean).length;
+  const activeFilters = [search, state, sector, size, minScore ? String(minScore) : ""].filter(Boolean).length;
   const avgScore = useMemo(() => prospects.length ? Math.round(prospects.reduce((sum, item) => sum + item.score, 0) / prospects.length) : 0, [prospects]);
 
   async function addToCampaign(prospect: Prospect) {
@@ -187,7 +215,7 @@ export default function ProspectorApp() {
     if (!campaignId) { setNotice("Crea una campaña antes de agregar prospectos"); return; }
     const response = await fetch("/api/campaigns", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ prospectId: prospect.id, campaignId }) });
     if (response.ok) {
-      const result = await response.json();
+      const result = await responseJson<ApiResult>(response);
       setNotice(result.added ? `${prospect.name} se agregó a la campaña` : `${prospect.name} ya estaba en la campaña`);
       void Promise.all([loadDashboard(), loadCampaigns(campaignId)]);
       window.setTimeout(() => setNotice(""), 2600);
@@ -198,10 +226,10 @@ export default function ProspectorApp() {
     if (campaignName.trim().length < 3) return;
     setCampaignBusy(true);
     const response = await fetch("/api/campaigns", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ name: campaignName }) });
-    const result = await response.json();
+    const result = await responseJson<ApiResult>(response);
     if (response.ok) {
       setCampaignName("");
-      await Promise.all([loadCampaigns(result.campaign.id), loadDashboard()]);
+      await Promise.all([loadCampaigns(result.campaign?.id), loadDashboard()]);
       setNotice("Campaña creada");
     } else setNotice(result.error || "No fue posible crear la campaña");
     setCampaignBusy(false);
@@ -216,6 +244,7 @@ export default function ProspectorApp() {
   async function selectLeadFile(file?: File) {
     setLeadError(""); setLeadRows([]); setLeadFileName(file?.name ?? "");
     if (!file) return;
+    if (file.size > 2_000_000) { setLeadError("El archivo supera 2 MB. Divide la base en cargas de hasta 1,000 filas."); return; }
     const rows = parseCsv(await file.text());
     if (!rows.length) { setLeadError("No encontramos filas válidas. Verifica que exista una columna nombre."); return; }
     setLeadRows(rows);
@@ -225,7 +254,7 @@ export default function ProspectorApp() {
     if (!leadRows.length) return;
     setLeadBusy(true); setLeadError("");
     const response = await fetch("/api/leads/import", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ leads: leadRows }) });
-    const result = await response.json();
+    const result = await responseJson<ApiResult>(response);
     if (response.ok) {
       setNotice(`${result.imported} leads nuevos · ${result.updated} actualizados`);
       setShowLeads(false); setLeadRows([]); setLeadFileName("");
@@ -244,10 +273,15 @@ export default function ProspectorApp() {
 
   async function openArl(prospect: Prospect) {
     const popup = window.open("about:blank", "_blank");
+    if (popup) popup.opener = null;
     const response = await fetch(`/api/prospects/${encodeURIComponent(prospect.id)}/arl-link`, { method: "POST" });
-    const result = await response.json();
+    const result = await responseJson<ApiResult>(response);
     if (response.ok) {
+      if (!result.url) throw new Error("ARL no devolvió un enlace válido");
       if (popup) popup.location.href = result.url; else window.location.href = result.url;
+      const updated = { ...prospect, intent_score: result.intentScore ?? prospect.intent_score ?? 0, score: result.score ?? prospect.score, arl_last_event: "opened" };
+      setSelected(updated);
+      setProspects((items) => items.map((item) => item.id === prospect.id ? updated : item));
       await Promise.all([loadProspects(), loadDashboard()]);
     } else { popup?.close(); setNotice(result.error || "No fue posible abrir ARL"); }
   }
@@ -255,7 +289,7 @@ export default function ProspectorApp() {
   async function syncArl() {
     setArlBusy(true);
     const response = await fetch("/api/integrations/arl/sync", { method: "POST" });
-    const result = await response.json();
+    const result = await responseJson<ApiResult>(response);
     if (response.ok) {
       setNotice(`${result.matched} diagnósticos vinculados · ${result.unmatched} sin coincidencia`);
       await Promise.all([loadProspects(), loadDashboard(), loadCampaigns(activeCampaignId)]);
@@ -286,14 +320,16 @@ export default function ProspectorApp() {
           pageSize: 100, maxRecords: importLimit,
         }),
       });
-      const created = await createdResponse.json();
+      const created = await responseJson<ApiResult>(createdResponse);
       if (!createdResponse.ok) throw new Error(created.error || "No fue posible crear la importación");
-      let job = created.job as ImportJob;
+      if (!created.job) throw new Error("La importación no devolvió un trabajo válido");
+      let job = created.job;
       setImportJob(job);
       for (let batch = 0; batch < 500 && job.status !== "completed"; batch += 1) {
         const runResponse = await fetch(`/api/admin/imports/${job.id}/run`, { method: "POST" });
-        const result = await runResponse.json();
-        job = result.job as ImportJob;
+        const result = await responseJson<ApiResult>(runResponse);
+        if (!result.job) throw new Error(result.error || "DENUE no devolvió el estado del lote");
+        job = result.job;
         setImportJob(job);
         if (!runResponse.ok) throw new Error(result.error || "DENUE no pudo procesar el lote");
       }
@@ -316,7 +352,7 @@ export default function ProspectorApp() {
           <a className="wordmark" href="#top" aria-label="VRAVURA inicio">VRAVURA<span>®</span></a>
           <div className={`nav-links ${mobileNav ? "nav-links-open" : ""}`}>
             <a className="active" href="#prospectos">Prospectos</a>
-            <a href="#campanas">Campañas <b>{dashboard.campaigns?.[0]?.total ?? 0}</b></a>
+            <a href="#campanas">Campañas <b>{dashboard.campaigns?.reduce((sum, campaign) => sum + Number(campaign.total ?? 0), 0) ?? 0}</b></a>
             <a href="#conversion">Conversión ARL</a>
             <a href="#fuentes">Fuentes</a>
           </div>
@@ -338,7 +374,7 @@ export default function ProspectorApp() {
         <div className="metrics" aria-label="Resumen comercial">
           <article><span className="metric-number">01</span><div><strong>6.1M</strong><span>Universo disponible</span><small>Establecimientos en México</small></div></article>
           <article><span className="metric-number">02</span><div><strong>{dashboard.stats?.priority ?? 0}</strong><span>Alta prioridad</span><small>Score de 70 o más</small></div></article>
-          <article><span className="metric-number">03</span><div><strong>{dashboard.stats?.diagnosed ?? 0}</strong><span>Diagnósticos ARL</span><small>Completados en el MVP</small></div></article>
+          <article><span className="metric-number">03</span><div><strong>{dashboard.stats?.diagnosed ?? 0}</strong><span>Diagnósticos ARL</span><small>Resultados sincronizados</small></div></article>
           <article><span className="metric-number">04</span><div><strong>{avgScore}</strong><span>Score promedio</span><small>En la vista actual</small></div></article>
         </div>
       </section>
@@ -360,9 +396,10 @@ export default function ProspectorApp() {
           </div>
 
           <div className="result-summary">
-            <span><b>{prospects.length}</b> organizaciones encontradas</span>
-            <div><button className="text-button" onClick={clearFilters}>Limpiar {activeFilters ? `(${activeFilters})` : ""}</button><button className="outline-button" onClick={() => setShowLeads(true)}>Subir leads ↑</button></div>
+            <span><b>{prospects.length}</b> de {totalProspects.toLocaleString("es-MX")} organizaciones</span>
+            <div><button type="button" className="text-button" onClick={clearFilters} disabled={!activeFilters}>Limpiar filtros {activeFilters ? `(${activeFilters})` : ""}</button><button className="outline-button" onClick={() => setShowLeads(true)}>Subir leads ↑</button></div>
           </div>
+          {prospects.length < totalProspects && <div className="load-more"><button className="outline-button" onClick={() => void loadProspects(prospects.length, true)}>Cargar 100 más ↓</button></div>}
 
           <div className="table-wrap">
             <table>
@@ -410,6 +447,13 @@ export default function ProspectorApp() {
           </ol>
           <button className="sync-arl-button" onClick={() => void syncArl()} disabled={arlBusy}>{arlBusy ? "Sincronizando…" : "Sincronizar resultados ARL ↻"}</button>
         </section>
+
+        <section className="sources-strip" id="fuentes">
+          <div><span className="section-kicker">TRAZABILIDAD DEL DATO</span><h2>FUENTES<br />ACTIVAS.</h2></div>
+          <article><span>01</span><div><strong>DENUE · INEGI</strong><p>Datos públicos empresariales consultados desde el servidor, normalizados y deduplicados por establecimiento.</p></div></article>
+          <article><span>02</span><div><strong>BASES VRAVURA</strong><p>Leads propios cargados por CSV, conservando la procedencia original cuando coinciden con DENUE.</p></div></article>
+          <article><span>03</span><div><strong>DIAGNÓSTICO ARL</strong><p>Señales de apertura y resultados de madurez que alimentan el componente de intención comercial.</p></div></article>
+        </section>
       </main>
 
       {selected && <div className="drawer-backdrop" onClick={() => setSelected(null)}><aside className="detail-drawer" onClick={(event) => event.stopPropagation()}>
@@ -426,7 +470,7 @@ export default function ProspectorApp() {
       {showLeads && <div className="modal-backdrop" onClick={() => setShowLeads(false)}><div className="import-modal" onClick={(event) => event.stopPropagation()}>
         <button className="drawer-close" onClick={() => setShowLeads(false)}>CERRAR ×</button><div className="section-marker">05</div><span className="section-kicker">BASE PROPIA · CSV</span><h2>SUBE TUS<br />PROPIOS LEADS.</h2><p>Carga hasta 1,000 organizaciones por archivo. Se validan, deduplican por correo o teléfono y reciben el mismo score firmográfico.</p>
         <div className="lead-upload-zone"><input id="lead-file" type="file" accept=".csv,text/csv" onChange={(event) => void selectLeadFile(event.target.files?.[0])} disabled={leadBusy} /><label htmlFor="lead-file"><strong>{leadFileName || "Seleccionar archivo CSV"}</strong><span>{leadRows.length ? `${leadRows.length} filas listas para importar` : "Arrastra o elige un archivo con encabezados"}</span></label></div>
-        <button className="text-button template-button" onClick={downloadLeadTemplate}>Descargar plantilla CSV ↓</button>
+        <div className="lead-file-actions"><button className="text-button template-button" onClick={downloadLeadTemplate}>Descargar plantilla CSV ↓</button>{leadFileName && <button className="text-button template-button" onClick={() => { setLeadRows([]); setLeadFileName(""); setLeadError(""); }}>Limpiar archivo ×</button>}</div>
         <div className="modal-note">Columnas admitidas: nombre, razón social, actividad, sector SCIAN, tamaño, estado, municipio, teléfono, correo y sitio web. Sólo “nombre” es obligatoria.</div>
         {leadError && <div className="import-error">{leadError}</div>}
         <button className="primary-button full" onClick={() => void uploadLeads()} disabled={leadBusy || !leadRows.length}>{leadBusy ? "Importando…" : leadRows.length ? `Importar ${leadRows.length} leads` : "Selecciona un CSV"}</button>
