@@ -22,9 +22,6 @@ export default async function LoginPage({
         {params.error === "credentials" ? (
           <p className="login-error" role="alert">Usuario o contraseña incorrectos.</p>
         ) : null}
-        {params.error === "config" ? (
-          <p className="login-error" role="alert">El acceso aún no está configurado en el servidor.</p>
-        ) : null}
         <form className="login-form" action="/api/auth/login" method="post">
           <input type="hidden" name="returnTo" value={returnTo} />
           <label htmlFor="email">Usuario</label>

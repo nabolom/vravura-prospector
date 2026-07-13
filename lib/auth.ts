@@ -2,6 +2,12 @@ import { cookies } from "next/headers";
 
 const COOKIE_NAME = "vravura_session";
 const SESSION_SECONDS = 60 * 60 * 12;
+const ALLOWED_EMAILS = new Set([
+  "leon.ruiz17@gmail.com",
+  "milo@vravura.com",
+]);
+const PASSWORD_HASH = "1bf5dbfb72a2d9e27440d06d0b76d0c0c7ccbf4ef13145167b1d0a7c16bbd126";
+const COOKIE_SECRET = "KeVgRJHp3NX5JfTYLxXPbsK0JCVPYzgEDb0PEXWcJwyXfiZ8LdftE294xAdU3MvC";
 
 export type AppUser = {
   displayName: string;
@@ -13,32 +19,25 @@ type SessionPayload = {
   exp: number;
 };
 
-type AuthConfig = {
-  email: string;
-  password: string;
-  secret: string;
-};
-
-export class AuthConfigurationError extends Error {}
-
 export async function authenticateCredentials(
   email: string,
   password: string,
 ): Promise<AppUser | null> {
-  const config = getAuthConfig();
-  const validEmail = normalizeEmail(email) === config.email;
-  const validPassword = await constantTimeEqual(password, config.password);
-  return validEmail && validPassword ? userFromEmail(config.email) : null;
+  const normalizedEmail = normalizeEmail(email);
+  const validEmail = ALLOWED_EMAILS.has(normalizedEmail);
+  const validPassword = await constantTimeEqual(await sha256Hex(password), PASSWORD_HASH);
+  return validEmail && validPassword ? userFromEmail(normalizedEmail) : null;
 }
 
 export async function createSessionToken(email: string): Promise<string> {
-  const config = getAuthConfig();
+  const normalizedEmail = normalizeEmail(email);
+  if (!ALLOWED_EMAILS.has(normalizedEmail)) throw new Error("Usuario no autorizado");
   const payload: SessionPayload = {
-    email: normalizeEmail(email),
+    email: normalizedEmail,
     exp: Math.floor(Date.now() / 1000) + SESSION_SECONDS,
   };
   const encodedPayload = encodeBase64Url(JSON.stringify(payload));
-  const signature = await sign(encodedPayload, config.secret);
+  const signature = await sign(encodedPayload, COOKIE_SECRET);
   return `${encodedPayload}.${signature}`;
 }
 
@@ -84,36 +83,23 @@ export function safeReturnPath(value: string | null | undefined): string {
 
 async function verifySessionToken(token: string): Promise<AppUser | null> {
   try {
-    const config = getAuthConfig();
     const [encodedPayload, signature, extra] = token.split(".");
     if (!encodedPayload || !signature || extra) return null;
-    const expectedSignature = await sign(encodedPayload, config.secret);
+    const expectedSignature = await sign(encodedPayload, COOKIE_SECRET);
     if (!(await constantTimeEqual(signature, expectedSignature))) return null;
 
     const payload = JSON.parse(decodeBase64Url(encodedPayload)) as SessionPayload;
     if (
-      normalizeEmail(payload.email) !== config.email ||
+      !ALLOWED_EMAILS.has(normalizeEmail(payload.email)) ||
       !Number.isFinite(payload.exp) ||
       payload.exp <= Math.floor(Date.now() / 1000)
     ) {
       return null;
     }
-    return userFromEmail(config.email);
+    return userFromEmail(normalizeEmail(payload.email));
   } catch {
     return null;
   }
-}
-
-function getAuthConfig(): AuthConfig {
-  const email = normalizeEmail(process.env.APP_LOGIN_EMAIL ?? "");
-  const password = process.env.APP_LOGIN_PASSWORD ?? "";
-  const secret = process.env.AUTH_COOKIE_SECRET ?? "";
-  if (!email || password.length < 12 || secret.length < 32) {
-    throw new AuthConfigurationError(
-      "Configura APP_LOGIN_EMAIL, APP_LOGIN_PASSWORD (mínimo 12 caracteres) y AUTH_COOKIE_SECRET (mínimo 32 caracteres).",
-    );
-  }
-  return { email, password, secret };
 }
 
 function userFromEmail(email: string): AppUser {
@@ -156,6 +142,11 @@ async function constantTimeEqual(left: string, right: string): Promise<boolean> 
     difference |= a[index] ^ b[index];
   }
   return difference === 0;
+}
+
+async function sha256Hex(value: string): Promise<string> {
+  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(value));
+  return Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, "0")).join("");
 }
 
 function encodeBase64Url(value: string): string {

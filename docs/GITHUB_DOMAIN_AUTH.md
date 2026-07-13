@@ -44,9 +44,9 @@ No debe reutilizarse el Supabase actual de ARL para autenticación hasta cerrar 
 
 ## Acceso temporal por contraseña
 
-Mientras se implementa magic link, el servidor usa tres secretos: `APP_LOGIN_EMAIL`, `APP_LOGIN_PASSWORD` y `AUTH_COOKIE_SECRET`. La sesión dura 12 horas, se guarda en una cookie `HttpOnly`, `SameSite=Lax` y `Secure` en producción, y todas las APIs de negocio rechazan solicitudes sin sesión.
+Mientras se implementa magic link, el servidor acepta exclusivamente los dos correos autorizados con una contraseña compartida. El repositorio conserva un hash SHA-256, no la contraseña legible. La sesión dura 12 horas, se guarda en una cookie `HttpOnly`, `SameSite=Lax` y `Secure` en producción, y todas las APIs de negocio rechazan solicitudes sin sesión.
 
-La contraseña nunca debe escribirse en `.env.example`, GitHub, issues ni logs. Para generar la llave de cookie puede usarse `openssl rand -base64 48` y guardarse directamente en las variables privadas de Hostinger.
+Esta solución evita variables adicionales en Hostinger, pero depende de que el repositorio permanezca privado. Rotar la contraseña o la llave de sesión requiere un cambio de código y un nuevo despliegue.
 
 ## Variables esperadas
 

@@ -35,7 +35,10 @@ test("temporary login uses signed cookie sessions and protects business APIs", a
   assert.match(auth, /httpOnly: true/);
   assert.match(auth, /sameSite: "lax"/);
   assert.match(auth, /HMAC/);
-  assert.match(auth, /APP_LOGIN_PASSWORD/);
+  assert.match(auth, /leon\.ruiz17@gmail\.com/);
+  assert.match(auth, /milo@vravura\.com/);
+  assert.match(auth, /PASSWORD_HASH/);
+  assert.doesNotMatch(auth, /APP_LOGIN_PASSWORD/);
   assert.match(login, /authenticateCredentials/);
   for (const route of routes) {
     const source = await readFile(new URL(route, import.meta.url), "utf8");

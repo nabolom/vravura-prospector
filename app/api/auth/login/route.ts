@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
 import {
-  AuthConfigurationError,
   authenticateCredentials,
   createSessionToken,
   safeReturnPath,
@@ -21,9 +20,7 @@ export async function POST(request: Request) {
     response.cookies.set(sessionCookie(await createSessionToken(user.email)));
     return response;
   } catch (error) {
-    if (error instanceof AuthConfigurationError) {
-      return loginRedirect(request, returnTo, "config");
-    }
+    console.error("Login failed", error instanceof Error ? error.message : "unknown error");
     return loginRedirect(request, returnTo, "credentials");
   }
 }

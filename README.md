@@ -38,7 +38,7 @@ El token debe configurarse como secreto `DENUE_TOKEN`; nunca se envía al navega
 
 ## Acceso temporal
 
-Configura `APP_LOGIN_EMAIL`, `APP_LOGIN_PASSWORD` y `AUTH_COOKIE_SECRET` como secretos del hosting. La contraseña exige al menos 12 caracteres y la llave de cookies al menos 32. Ninguno de esos valores debe guardarse en GitHub.
+El acceso temporal permite exclusivamente `leon.ruiz17@gmail.com` y `milo@vravura.com` con una contraseña compartida. El repositorio conserva únicamente su hash, no la contraseña legible. Cambiar las credenciales requiere actualizar el hash y volver a desplegar.
 
 ## GitHub, dominio y magic link
 
