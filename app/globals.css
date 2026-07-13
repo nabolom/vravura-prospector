@@ -211,6 +211,8 @@ tbody tr:last-child td { border-bottom: 0; }
 .lead-file-actions { display: flex; justify-content: space-between; gap: 14px; }
 .toast { position: fixed; right: 24px; bottom: 24px; z-index: 90; display: flex; align-items: center; gap: 10px; padding: 12px 16px; color: var(--white); border: 1px solid var(--white); border-radius: 5px; background: var(--indigo); font-size: 10px; font-weight: 600; }
 .toast span { padding: 4px; color: var(--white); border: 1px solid var(--white); border-radius: 5px; font-family: var(--display); }
+.back-to-top { position: fixed; left: 20px; bottom: 20px; z-index: 45; display: inline-flex; align-items: center; gap: 8px; padding: 8px 12px 8px 8px; color: var(--indigo); border: 1px solid var(--indigo); border-radius: 5px; background: rgba(255,255,255,.94); box-shadow: 0 4px 20px rgba(31,0,255,.12); font-size: 8px; font-weight: 600; letter-spacing: .06em; text-decoration: none; text-transform: uppercase; backdrop-filter: blur(8px); }
+.back-to-top span { width: 26px; height: 26px; display: grid; place-items: center; color: var(--white); border-radius: 4px; background: var(--indigo); font-family: var(--display); font-size: 17px; }.back-to-top:hover { color: var(--white); background: var(--indigo); }.back-to-top:hover span { color: var(--indigo); background: var(--white); }
 
 @media (max-width: 1040px) {
   .top-nav { grid-template-columns: auto 1fr auto; }.nav-links { display: none; }.mode-tabs { justify-self: center; }
@@ -231,5 +233,6 @@ tbody tr:last-child td { border-bottom: 0; }
   .import-form { grid-template-columns: 1fr; }
   .campaign-workspace { margin-top: 60px; }.campaign-head { padding: 68px 20px 24px; }.campaign-create { grid-template-columns: 1fr; }.campaign-members { padding: 18px; }.campaign-members article { grid-template-columns: 36px 1fr 28px; }.campaign-members article .status { display: none; }
   .sources-strip { grid-template-columns: 1fr; }.sources-strip > div, .sources-strip article { border-right: 0; border-bottom: 1px solid var(--indigo) !important; }.sources-strip article:last-child { border-bottom: 0 !important; }
+  .back-to-top { left: 12px; bottom: 12px; }.back-to-top { padding-right: 8px; }.back-to-top:not(:hover) { font-size: 0; }
 }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { scroll-behavior: auto !important; } }

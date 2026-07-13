@@ -510,6 +510,7 @@ export default function ProspectorApp({ user }: { user: { displayName: string; e
         {importError && <div className="import-error">{importError}</div>}
         <div className="modal-note">El token nunca se expone al navegador. Los dummies se eliminan con el primer lote real.</div><button className="primary-button full" onClick={() => void startImport()} disabled={importing}>{importing ? "Importando…" : "Iniciar importación"}</button>
       </div></div>}
+      <a className="back-to-top" href="#top" aria-label="Volver al inicio"><span>↑</span> Inicio</a>
       {notice && <div className="toast"><span>OK</span>{notice}</div>}
     </div>
   );

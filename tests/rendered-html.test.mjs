@@ -13,6 +13,7 @@ test("product source replaces the starter preview", async () => {
   assert.match(client, /CAMPAÑAS/);
   assert.match(client, /SUBE TUS/);
   assert.match(client, /Sincronizar resultados ARL/);
+  assert.match(client, /Volver al inicio/);
   assert.doesNotMatch(page + layout + client, /codex-preview|SkeletonPreview/);
 });
 
