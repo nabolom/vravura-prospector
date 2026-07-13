@@ -12,7 +12,7 @@ Aplicación privada para descubrir, priorizar y convertir organizaciones mexican
 - Importaciones paginadas desde la API oficial DENUE con progreso persistente.
 - Normalización, deduplicación y score explicable calculado en servidor.
 - Score combinado de potencial firmográfico e intención ARL.
-- Acceso privado actual mediante Sign in with ChatGPT.
+- Acceso privado temporal mediante usuario, contraseña y cookie de sesión firmada.
 - Interfaz responsive, navegación por anclas y regreso flotante al inicio.
 
 ## Desarrollo
@@ -35,6 +35,10 @@ npx tsc --noEmit
 La carga nacional real requiere el token de la API DENUE o los archivos ZIP oficiales de INEGI. El sitio ARL debe conservar `lead_id` y los parámetros UTM junto con cada diagnóstico completado.
 
 El token debe configurarse como secreto `DENUE_TOKEN`; nunca se envía al navegador. La primera importación real retira automáticamente los registros demostrativos.
+
+## Acceso temporal
+
+Configura `APP_LOGIN_EMAIL`, `APP_LOGIN_PASSWORD` y `AUTH_COOKIE_SECRET` como secretos del hosting. La contraseña exige al menos 12 caracteres y la llave de cookies al menos 32. Ninguno de esos valores debe guardarse en GitHub.
 
 ## GitHub, dominio y magic link
 

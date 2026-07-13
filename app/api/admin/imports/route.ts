@@ -1,10 +1,13 @@
 import { ensureDatabase } from "../../data";
+import { rejectUnauthenticatedApiRequest } from "../../../../lib/auth";
 
 export const dynamic = "force-dynamic";
 
 const statePattern = /^(?:0[1-9]|[12]\d|3[0-2])$/;
 
 export async function GET() {
+  const unauthorized = await rejectUnauthenticatedApiRequest();
+  if (unauthorized) return unauthorized;
   try {
     const db = await ensureDatabase();
     const result = await db.prepare("SELECT * FROM import_jobs ORDER BY created_at DESC LIMIT 20").all();
@@ -15,6 +18,8 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
+  const unauthorized = await rejectUnauthenticatedApiRequest();
+  if (unauthorized) return unauthorized;
   try {
     const db = await ensureDatabase();
     const payload = (await request.json()) as {

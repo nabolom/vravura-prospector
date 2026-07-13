@@ -1,9 +1,12 @@
 import { ensureDatabase } from "../../../data";
 import { calculateIntentScore } from "../../../../../lib/scoring";
+import { rejectUnauthenticatedApiRequest } from "../../../../../lib/auth";
 
 export const dynamic = "force-dynamic";
 
 export async function POST(_request: Request, context: { params: Promise<{ id: string }> }) {
+  const unauthorized = await rejectUnauthenticatedApiRequest();
+  if (unauthorized) return unauthorized;
   try {
     const db = await ensureDatabase();
     const { id } = await context.params;

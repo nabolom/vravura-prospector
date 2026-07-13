@@ -1,8 +1,11 @@
 import { ensureDatabase } from "../data";
+import { rejectUnauthenticatedApiRequest } from "../../../lib/auth";
 
 export const dynamic = "force-dynamic";
 
 export async function GET() {
+  const unauthorized = await rejectUnauthenticatedApiRequest();
+  if (unauthorized) return unauthorized;
   try {
     const db = await ensureDatabase();
     const [stats, funnel, campaigns] = await Promise.all([

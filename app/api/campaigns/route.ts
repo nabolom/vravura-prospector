@@ -1,8 +1,11 @@
 import { ensureDatabase } from "../data";
+import { rejectUnauthenticatedApiRequest } from "../../../lib/auth";
 
 export const dynamic = "force-dynamic";
 
 export async function GET(request: Request) {
+  const unauthorized = await rejectUnauthenticatedApiRequest();
+  if (unauthorized) return unauthorized;
   try {
     const db = await ensureDatabase();
     const campaignId = Number(new URL(request.url).searchParams.get("campaignId") ?? 0);
@@ -28,6 +31,8 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
+  const unauthorized = await rejectUnauthenticatedApiRequest();
+  if (unauthorized) return unauthorized;
   try {
     const db = await ensureDatabase();
     const payload = (await request.json()) as { name?: string; prospectId?: string; campaignId?: number };
@@ -55,6 +60,8 @@ export async function POST(request: Request) {
 }
 
 export async function DELETE(request: Request) {
+  const unauthorized = await rejectUnauthenticatedApiRequest();
+  if (unauthorized) return unauthorized;
   try {
     const db = await ensureDatabase();
     const payload = (await request.json()) as { prospectId?: string; campaignId?: number };

@@ -6,7 +6,8 @@ test("product source replaces the starter preview", async () => {
   const layout = await import("node:fs/promises").then(({ readFile }) => readFile(new URL("../app/layout.tsx", import.meta.url), "utf8"));
   const client = await import("node:fs/promises").then(({ readFile }) => readFile(new URL("../app/prospector-app.tsx", import.meta.url), "utf8"));
   assert.match(page, /ProspectorApp/);
-  assert.match(page, /requireChatGPTUser/);
+  assert.match(page, /getSessionUser/);
+  assert.match(page, /redirect\("\/login"\)/);
   assert.match(layout, /VRAVURA Prospector/);
   assert.match(client, /EXPLORADOR/);
   assert.match(client, /OPORTUNIDADES REALES/);
@@ -15,6 +16,31 @@ test("product source replaces the starter preview", async () => {
   assert.match(client, /Sincronizar resultados ARL/);
   assert.match(client, /Volver al inicio/);
   assert.doesNotMatch(page + layout + client, /codex-preview|SkeletonPreview/);
+});
+
+test("temporary login uses signed cookie sessions and protects business APIs", async () => {
+  const { readFile } = await import("node:fs/promises");
+  const auth = await readFile(new URL("../lib/auth.ts", import.meta.url), "utf8");
+  const login = await readFile(new URL("../app/api/auth/login/route.ts", import.meta.url), "utf8");
+  const routes = [
+    "../app/api/campaigns/route.ts",
+    "../app/api/dashboard/route.ts",
+    "../app/api/prospects/route.ts",
+    "../app/api/leads/import/route.ts",
+    "../app/api/admin/imports/route.ts",
+    "../app/api/admin/imports/[id]/run/route.ts",
+    "../app/api/integrations/arl/sync/route.ts",
+    "../app/api/prospects/[id]/arl-link/route.ts",
+  ];
+  assert.match(auth, /httpOnly: true/);
+  assert.match(auth, /sameSite: "lax"/);
+  assert.match(auth, /HMAC/);
+  assert.match(auth, /APP_LOGIN_PASSWORD/);
+  assert.match(login, /authenticateCredentials/);
+  for (const route of routes) {
+    const source = await readFile(new URL(route, import.meta.url), "utf8");
+    assert.match(source, /rejectUnauthenticatedApiRequest/);
+  }
 });
 
 test("campaign deletion removes membership rows before the campaign", async () => {

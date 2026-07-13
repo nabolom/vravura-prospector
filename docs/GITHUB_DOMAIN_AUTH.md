@@ -2,8 +2,9 @@
 
 ## Estado actual
 
-- Aplicación desplegada en Sites con D1 y acceso privado mediante ChatGPT.
-- El repositorio local todavía no tiene un remoto de GitHub configurado.
+- Aplicación desplegada en Sites con D1 y acceso temporal propio mediante usuario y contraseña.
+- Repositorio privado publicado en `nabolom/vravura-prospector`.
+- Dominio de producción previsto: `https://prospector.vravura.com`.
 - Los usuarios previstos para el futuro magic link son exclusivamente:
   - `leon.ruiz17@gmail.com`
   - `milo@vravura.com`
@@ -40,6 +41,12 @@ La barrera nativa de Sites usa ChatGPT. Para sustituirla por magic links se requ
 8. Sólo después cambiar el acceso de Sites a público para que el login propio pueda mostrarse.
 
 No debe reutilizarse el Supabase actual de ARL para autenticación hasta cerrar sus políticas de lectura anónima.
+
+## Acceso temporal por contraseña
+
+Mientras se implementa magic link, el servidor usa tres secretos: `APP_LOGIN_EMAIL`, `APP_LOGIN_PASSWORD` y `AUTH_COOKIE_SECRET`. La sesión dura 12 horas, se guarda en una cookie `HttpOnly`, `SameSite=Lax` y `Secure` en producción, y todas las APIs de negocio rechazan solicitudes sin sesión.
+
+La contraseña nunca debe escribirse en `.env.example`, GitHub, issues ni logs. Para generar la llave de cookie puede usarse `openssl rand -base64 48` y guardarse directamente en las variables privadas de Hostinger.
 
 ## Variables esperadas
 

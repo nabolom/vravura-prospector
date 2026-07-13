@@ -1,6 +1,7 @@
 import { ensureDatabase } from "../../../data";
 import { fetchArlTable } from "../../../../../lib/arl";
 import { calculateIntentScore } from "../../../../../lib/scoring";
+import { rejectUnauthenticatedApiRequest } from "../../../../../lib/auth";
 
 export const dynamic = "force-dynamic";
 
@@ -11,6 +12,8 @@ type ArlSession = {
 };
 
 export async function POST() {
+  const unauthorized = await rejectUnauthenticatedApiRequest();
+  if (unauthorized) return unauthorized;
   try {
     const db = await ensureDatabase();
     const [leads, sessions] = await Promise.all([

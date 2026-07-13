@@ -1,5 +1,6 @@
 import { ensureDatabase } from "../../../../data";
 import { fetchDenueBatch, normalizeDenueRow, type NormalizedProspect } from "../../../../../../lib/denue";
+import { rejectUnauthenticatedApiRequest } from "../../../../../../lib/auth";
 
 export const dynamic = "force-dynamic";
 
@@ -42,6 +43,8 @@ async function upsertProspects(db: D1Database, prospects: NormalizedProspect[]) 
 }
 
 export async function POST(_request: Request, context: { params: Promise<{ id: string }> }) {
+  const unauthorized = await rejectUnauthenticatedApiRequest();
+  if (unauthorized) return unauthorized;
   const db = await ensureDatabase();
   const { id } = await context.params;
   const job = await db.prepare("SELECT * FROM import_jobs WHERE id = ?").bind(id).first<ImportJob>();

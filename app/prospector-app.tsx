@@ -377,7 +377,7 @@ export default function ProspectorApp({ user }: { user: { displayName: string; e
             <a href="#fuentes">Fuentes</a>
           </div>
           <div className="mode-tabs" aria-label="Modo de producto"><span className="active">Prospector</span><a href="https://arl-vravura.bolt.host/" target="_blank" rel="noreferrer">Diagnóstico ARL</a></div>
-          <div className="nav-actions"><div className="account-chip" title={user.email}><span>{initials(user.displayName)}</span><div><strong>{user.displayName}</strong><a href="/signout-with-chatgpt?return_to=/">Cerrar sesión</a></div></div><button className="outline-light-button" onClick={() => setShowLeads(true)}>Subir leads</button><button className="primary-button nav-cta" onClick={() => setShowImport(true)}>Importar DENUE</button></div>
+          <div className="nav-actions"><div className="account-chip" title={user.email}><span>{initials(user.displayName)}</span><div><strong>{user.displayName}</strong><form action="/api/auth/logout" method="post"><button type="submit" className="account-logout">Cerrar sesión</button></form></div></div><button className="outline-light-button" onClick={() => setShowLeads(true)}>Subir leads</button><button className="primary-button nav-cta" onClick={() => setShowImport(true)}>Importar DENUE</button></div>
           <button className="menu-button" onClick={() => setMobileNav(!mobileNav)} aria-label="Abrir menú">MENU</button>
         </nav>
 
