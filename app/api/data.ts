@@ -68,15 +68,12 @@ export async function ensureDatabase() {
         .bind(...row.slice(0, 12), row[11], row[12], arlUrl);
     });
     await db.batch(inserts);
+    await db.prepare("INSERT INTO campaigns (name) VALUES (?)").bind("Prospectos ARL · Julio").run();
     await db.batch([
       db.prepare("INSERT INTO arl_events (prospect_id, event_type) VALUES (?, ?)").bind("denue-1004", "completed"),
       db.prepare("INSERT INTO arl_events (prospect_id, event_type) VALUES (?, ?)").bind("denue-1008", "completed"),
       db.prepare("INSERT INTO arl_events (prospect_id, event_type) VALUES (?, ?)").bind("denue-1002", "opened"),
     ]);
-  }
-  const campaignCount = await db.prepare("SELECT COUNT(*) AS total FROM campaigns").first<{ total: number }>();
-  if ((campaignCount?.total ?? 0) === 0) {
-    await db.prepare("INSERT INTO campaigns (name) VALUES (?)").bind("Prospectos ARL · Julio").run();
   }
   return db;
 }

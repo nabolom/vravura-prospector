@@ -116,7 +116,7 @@ function parseCsv(text: string): LeadRow[] {
   }).filter((lead) => lead.name);
 }
 
-export default function ProspectorApp() {
+export default function ProspectorApp({ user }: { user: { displayName: string; email: string } }) {
   const [prospects, setProspects] = useState<Prospect[]>([]);
   const [totalProspects, setTotalProspects] = useState(0);
   const [dashboard, setDashboard] = useState<Dashboard>({});
@@ -151,6 +151,7 @@ export default function ProspectorApp() {
   const [leadError, setLeadError] = useState("");
   const [leadBusy, setLeadBusy] = useState(false);
   const [arlBusy, setArlBusy] = useState(false);
+  const [campaignPendingDelete, setCampaignPendingDelete] = useState<Campaign | null>(null);
 
   const loadDashboard = useCallback(async () => {
     const response = await fetch("/api/dashboard");
@@ -163,7 +164,8 @@ export default function ProspectorApp() {
     const listData = await responseJson<CampaignsPayload>(listResponse);
     const nextCampaigns = (listData.campaigns ?? []) as Campaign[];
     setCampaigns(nextCampaigns);
-    const id = requestedId ?? (activeCampaignId || nextCampaigns[0]?.id || 0);
+    const desiredId = requestedId ?? activeCampaignId;
+    const id = nextCampaigns.some((campaign) => campaign.id === desiredId) ? desiredId : nextCampaigns[0]?.id ?? 0;
     if (!id) { setCampaignMembers([]); return; }
     setActiveCampaignId(id);
     const membersResponse = await fetch(`/api/campaigns?campaignId=${id}`);
@@ -239,6 +241,24 @@ export default function ProspectorApp() {
   async function removeFromCampaign(prospectId: string) {
     await fetch("/api/campaigns", { method: "DELETE", headers: { "content-type": "application/json" }, body: JSON.stringify({ prospectId, campaignId: activeCampaignId }) });
     await Promise.all([loadCampaigns(activeCampaignId), loadDashboard()]);
+  }
+
+  async function deleteCampaign() {
+    if (!campaignPendingDelete) return;
+    setCampaignBusy(true);
+    const response = await fetch("/api/campaigns", {
+      method: "DELETE", headers: { "content-type": "application/json" },
+      body: JSON.stringify({ campaignId: campaignPendingDelete.id }),
+    });
+    const result = await responseJson<ApiResult>(response);
+    if (response.ok) {
+      setCampaignPendingDelete(null);
+      setActiveCampaignId(0);
+      await Promise.all([loadCampaigns(0), loadDashboard()]);
+      setNotice("Campaña eliminada");
+    } else setNotice(result.error || "No fue posible eliminar la campaña");
+    setCampaignBusy(false);
+    window.setTimeout(() => setNotice(""), 2600);
   }
 
   async function selectLeadFile(file?: File) {
@@ -357,7 +377,7 @@ export default function ProspectorApp() {
             <a href="#fuentes">Fuentes</a>
           </div>
           <div className="mode-tabs" aria-label="Modo de producto"><span className="active">Prospector</span><a href="https://arl-vravura.bolt.host/" target="_blank" rel="noreferrer">Diagnóstico ARL</a></div>
-          <div className="nav-actions"><button className="outline-light-button" onClick={() => setShowLeads(true)}>Subir leads</button><button className="primary-button nav-cta" onClick={() => setShowImport(true)}>Importar DENUE</button></div>
+          <div className="nav-actions"><div className="account-chip" title={user.email}><span>{initials(user.displayName)}</span><div><strong>{user.displayName}</strong><a href="/signout-with-chatgpt?return_to=/">Cerrar sesión</a></div></div><button className="outline-light-button" onClick={() => setShowLeads(true)}>Subir leads</button><button className="primary-button nav-cta" onClick={() => setShowImport(true)}>Importar DENUE</button></div>
           <button className="menu-button" onClick={() => setMobileNav(!mobileNav)} aria-label="Abrir menú">MENU</button>
         </nav>
 
@@ -427,7 +447,7 @@ export default function ProspectorApp() {
           <div className="campaign-head"><div><span className="section-kicker">ACTIVACIÓN COMERCIAL</span><h2>CAMPAÑAS<br />TRAZABLES.</h2></div><div className="campaign-create"><input value={campaignName} onChange={(event) => setCampaignName(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter") void createCampaign(); }} placeholder="Nombre de la nueva campaña" maxLength={80} /><button className="primary-button" onClick={() => void createCampaign()} disabled={campaignBusy || campaignName.trim().length < 3}>Crear campaña</button></div></div>
           <div className="campaign-layout">
             <div className="campaign-list" aria-label="Campañas">
-              {campaigns.length ? campaigns.map((campaign) => <button key={campaign.id} className={activeCampaignId === campaign.id ? "active" : ""} onClick={() => void loadCampaigns(campaign.id)}><span>{String(campaign.id).padStart(2, "0")}</span><div><strong>{campaign.name}</strong><small>{campaign.total ?? 0} prospectos · {campaign.diagnosed ?? 0} ARL</small></div><b>→</b></button>) : <p>Crea tu primera campaña para agrupar prospectos.</p>}
+              {campaigns.length ? campaigns.map((campaign) => <article key={campaign.id} className={`campaign-list-item ${activeCampaignId === campaign.id ? "active" : ""}`}><button className="campaign-select-button" onClick={() => void loadCampaigns(campaign.id)}><span>{String(campaign.id).padStart(2, "0")}</span><div><strong>{campaign.name}</strong><small>{campaign.total ?? 0} prospectos · {campaign.diagnosed ?? 0} ARL</small></div><b>→</b></button><button className="campaign-delete-button" onClick={() => setCampaignPendingDelete(campaign)} aria-label={`Eliminar campaña ${campaign.name}`}>×</button></article>) : <p>Crea tu primera campaña para agrupar prospectos.</p>}
             </div>
             <div className="campaign-members">
               <div className="campaign-members-head"><strong>{campaigns.find((item) => item.id === activeCampaignId)?.name ?? "Sin campaña seleccionada"}</strong><span>{campaignMembers.length} integrantes</span></div>
@@ -475,6 +495,8 @@ export default function ProspectorApp() {
         {leadError && <div className="import-error">{leadError}</div>}
         <button className="primary-button full" onClick={() => void uploadLeads()} disabled={leadBusy || !leadRows.length}>{leadBusy ? "Importando…" : leadRows.length ? `Importar ${leadRows.length} leads` : "Selecciona un CSV"}</button>
       </div></div>}
+
+      {campaignPendingDelete && <div className="modal-backdrop" onClick={() => !campaignBusy && setCampaignPendingDelete(null)}><div className="confirm-modal" role="dialog" aria-modal="true" aria-labelledby="delete-campaign-title" onClick={(event) => event.stopPropagation()}><span className="section-kicker">ACCIÓN IRREVERSIBLE</span><h2 id="delete-campaign-title">¿ELIMINAR<br />CAMPAÑA?</h2><p>Se eliminará <strong>{campaignPendingDelete.name}</strong> y su lista de integrantes. Las empresas permanecerán en Prospectos.</p><div><button className="outline-button" onClick={() => setCampaignPendingDelete(null)} disabled={campaignBusy}>Cancelar</button><button className="danger-button" onClick={() => void deleteCampaign()} disabled={campaignBusy}>{campaignBusy ? "Eliminando…" : "Sí, eliminar"}</button></div></div></div>}
 
       {showImport && <div className="modal-backdrop" onClick={() => setShowImport(false)}><div className="import-modal" onClick={(event) => event.stopPropagation()}>
         <button className="drawer-close" onClick={() => setShowImport(false)}>CERRAR ×</button><div className="section-marker">06</div><span className="section-kicker">CONECTOR SERVER-SIDE</span><h2>IMPORTA<br />DESDE DENUE.</h2><p>Consulta la API oficial por entidad, sector y tamaño. Los registros se normalizan, deduplican y califican automáticamente.</p>

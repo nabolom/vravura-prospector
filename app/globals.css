@@ -38,6 +38,8 @@ button { cursor: pointer; }
 .primary-button:hover { border-color: var(--orange-hover); background: var(--orange-hover); }
 .nav-cta { white-space: nowrap; }
 .nav-actions { display: flex; gap: 7px; }
+.account-chip { height: 40px; display: flex; align-items: center; gap: 8px; padding: 5px 9px 5px 5px; color: var(--white); border: 1px solid rgba(255,255,255,.7); border-radius: 5px; }
+.account-chip > span { width: 28px; height: 28px; display: grid; place-items: center; color: var(--indigo); border-radius: 4px; background: var(--white); font-family: var(--display); font-size: 11px; }.account-chip > div { display: grid; gap: 2px; max-width: 118px; }.account-chip strong { overflow: hidden; font-size: 8px; text-overflow: ellipsis; white-space: nowrap; }.account-chip a { color: rgba(255,255,255,.72); font-size: 7px; text-decoration: none; text-transform: uppercase; }
 .outline-light-button { padding: 10px 14px; color: var(--white); border: 1px solid var(--white); border-radius: 5px; background: transparent; font-size: 9px; font-weight: 600; letter-spacing: .05em; text-transform: uppercase; white-space: nowrap; }
 .outline-light-button:hover { color: var(--indigo); background: var(--white); }
 .menu-button { display: none; }
@@ -146,10 +148,12 @@ tbody tr:last-child td { border-bottom: 0; }
 .campaign-create input { min-width: 0; height: 40px; padding: 0 12px; color: var(--ink); border: 1px solid var(--indigo); border-radius: 5px; outline: none; font-size: 11px; }
 .campaign-layout { display: grid; grid-template-columns: minmax(250px, .72fr) 1.5fr; min-height: 330px; }
 .campaign-list { padding: 20px; background: var(--fog); border-right: 1px solid var(--indigo); }
-.campaign-list > button { width: 100%; display: grid; grid-template-columns: 34px 1fr auto; align-items: center; gap: 10px; padding: 13px; color: var(--ink); border: 1px solid var(--gridline); border-bottom: 0; background: var(--white); text-align: left; }
-.campaign-list > button:first-child { border-radius: 5px 5px 0 0; }.campaign-list > button:last-of-type { border-bottom: 1px solid var(--gridline); border-radius: 0 0 5px 5px; }
-.campaign-list > button.active { position: relative; z-index: 1; color: var(--indigo); border-color: var(--indigo); outline: 1px solid var(--indigo); }
-.campaign-list > button > span { font-family: var(--display); font-size: 16px; }.campaign-list > button div { display: grid; gap: 4px; }.campaign-list strong { font-size: 10px; }.campaign-list small { color: #777; font-size: 8px; }
+.campaign-list-item { position: relative; display: grid; grid-template-columns: 1fr 34px; border: 1px solid var(--gridline); border-bottom: 0; background: var(--white); }
+.campaign-list-item:first-child { border-radius: 5px 5px 0 0; }.campaign-list-item:last-of-type { border-bottom: 1px solid var(--gridline); border-radius: 0 0 5px 5px; }
+.campaign-list-item.active { z-index: 1; color: var(--indigo); border-color: var(--indigo); outline: 1px solid var(--indigo); }
+.campaign-select-button { min-width: 0; display: grid; grid-template-columns: 34px 1fr auto; align-items: center; gap: 10px; padding: 13px; color: inherit; border: 0; background: transparent; text-align: left; }
+.campaign-select-button > span { font-family: var(--display); font-size: 16px; }.campaign-select-button div { display: grid; gap: 4px; }.campaign-list strong { font-size: 10px; }.campaign-list small { color: #777; font-size: 8px; }
+.campaign-delete-button { margin: 9px 8px 9px 0; color: #888; border: 1px solid var(--gridline); border-radius: 5px; background: var(--white); font-size: 16px; }.campaign-delete-button:hover { color: var(--white); border-color: #b52424; background: #b52424; }
 .campaign-list > p { color: #666; font-size: 11px; line-height: 1.5; }
 .campaign-members { padding: 20px 28px; }
 .campaign-members-head { display: flex; justify-content: space-between; padding: 8px 0 14px; color: var(--indigo); border-bottom: 1px solid var(--indigo); font-size: 10px; text-transform: uppercase; }
@@ -181,6 +185,8 @@ tbody tr:last-child td { border-bottom: 0; }
 
 .modal-backdrop { display: grid; place-items: center; padding: 20px; }
 .import-modal { position: relative; width: min(540px, 100%); padding: 82px 38px 38px; background: var(--white); border: 1px solid var(--indigo); border-radius: 5px; }
+.confirm-modal { width: min(440px, 100%); padding: 36px; background: var(--white); border: 1px solid var(--indigo); border-radius: 5px; }.confirm-modal h2 { margin: 12px 0 18px; color: var(--indigo); font-family: var(--display); font-size: 54px; line-height: .86; letter-spacing: .035em; }.confirm-modal p { color: #555; font-size: 12px; line-height: 1.55; }.confirm-modal > div { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 24px; }
+.danger-button { padding: 10px 16px; color: var(--white); border: 1px solid #b52424; border-radius: 5px; background: #b52424; font-size: 10px; font-weight: 600; letter-spacing: .05em; text-transform: uppercase; }.danger-button:hover { background: #8f1717; }.danger-button:disabled { cursor: wait; opacity: .55; }
 .import-modal h2 { font-size: 54px; }.import-modal > p { color: #555; font-size: 13px; line-height: 1.55; }
 .import-form { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 20px 0 14px; }
 .import-form label { display: grid; gap: 6px; color: var(--indigo); font-size: 9px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; }

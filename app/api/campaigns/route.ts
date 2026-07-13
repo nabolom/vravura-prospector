@@ -59,12 +59,21 @@ export async function DELETE(request: Request) {
     const db = await ensureDatabase();
     const payload = (await request.json()) as { prospectId?: string; campaignId?: number };
     const campaignId = Number(payload.campaignId);
-    if (!payload.prospectId || !Number.isInteger(campaignId)) {
+    if (!Number.isInteger(campaignId) || campaignId < 1) {
       return Response.json({ error: "Datos inválidos" }, { status: 400 });
     }
-    await db.prepare("DELETE FROM campaign_prospects WHERE campaign_id = ? AND prospect_id = ?")
-      .bind(campaignId, payload.prospectId).run();
-    return Response.json({ ok: true });
+    if (payload.prospectId) {
+      await db.prepare("DELETE FROM campaign_prospects WHERE campaign_id = ? AND prospect_id = ?")
+        .bind(campaignId, payload.prospectId).run();
+      return Response.json({ ok: true, deleted: "membership" });
+    }
+    const campaign = await db.prepare("SELECT id FROM campaigns WHERE id = ?").bind(campaignId).first();
+    if (!campaign) return Response.json({ error: "Campaña no encontrada" }, { status: 404 });
+    await db.batch([
+      db.prepare("DELETE FROM campaign_prospects WHERE campaign_id = ?").bind(campaignId),
+      db.prepare("DELETE FROM campaigns WHERE id = ?").bind(campaignId),
+    ]);
+    return Response.json({ ok: true, deleted: "campaign" });
   } catch (error) {
     return Response.json({ error: error instanceof Error ? error.message : "No fue posible retirar el prospecto" }, { status: 500 });
   }
